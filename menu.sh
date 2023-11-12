@@ -5,8 +5,8 @@ Black='\'033'\e'[30m
 Red='\'033'\e'[31m
 Green='\'033'\e'[32m
 Brown='\'033'\e'[33m
-Blue='\'033'\e'[34m
-Purple='\'033'\e'[35m
+Blue='\'033'\e'[94m
+Purple='\'033'\e'[95m
 Cyan='\'033'\e'[36m
 Grey='\'033'\e'[37m
 Yellow='\'033'\e'[33m
@@ -29,20 +29,6 @@ echo -e "${Grey}"
 read -e -p "Select one of the above images as the source image. (copy and paste it): " sourcediskimage
 export sourcediskimage=$sourcediskimage
 echo -e "${Yellow}"
-gcloud compute networks list --filter="name:(iam,pgalligan)"
-echo -e "${Grey}"
-read -e -p "Select one of the above networks. iam-eu-vpc for EMEA workshops (copy and paste it): " network
-export network=$network
-echo -e "${Yellow}"
-gcloud compute regions list --filter="name:(europe,australia)"
-echo -e "${Grey}"
-read -e -p "Select one of the above regions. europe-west1 for EMEA workshops (copy and paste it): " region
-export region=$region
-echo -e "${Yellow}"
-gcloud compute networks subnets list --filter="network:$network"
-echo -e "${Grey}"
-read -e -p "Select the subnet. iam-eu-west1 for EMEA workshops (copy and paste it): " subnet
-export subnet=$subnet
 }
 
 # Function to display the entered variables before proceeding with instance creation. To be piped to column -t for formatting
@@ -164,6 +150,46 @@ function registerTrialKey () {
     read -e -p "Press any key to continue"
 }
 
+#Function to set region and other parameters
+function setRegion () {
+                clear
+                echo
+                echo -e "${Yellow}1. AU - australia-southeast1 (Sydney)"
+                echo -e "2. AS - asia-southeast1 (Singapore)"
+                echo -e "3. EU - europe-west1 (Belgium)${Purple}"
+                echo
+                read -e -p "Make Region Selection. Network and subnet will be automatically configured: " selectregion
+                case $selectregion in
+                    1)
+                        echo -e "${Red}"
+                        gcloud config set compute/region australia-southeast1
+                        export region=australia-southeast1
+                        export network=anz-pgalligan-network-1
+                        export subnet=australia-southeast-1
+                        echo -e "${Grey}";;
+                    2)
+                        echo -e "${Red}"
+                        gcloud config set compute/region asia-southeast1
+                        export region=asia-southeast1
+                        export network=iam-apac-xperts-sin
+                        export subnet=iam-apac-xperts-sin
+                        echo -e "${Grey}";;
+                    3)
+                        echo -e "${Red}"
+                        gcloud config set compute/region europe-west1
+                        export region=europe-west1
+                        export network=iam-eu-vpc
+                        export subnet=iam-eu-west1
+                        echo -e "${Grey}";;
+                esac
+                echo
+                echo -e "${Yellow}Region: ${Grey}$region"
+                echo -e "${Yellow}Network: ${Grey}$network"
+                echo -e "${Yellow}Subnet: ${Grey}$subnet"
+                echo
+                read -e -p "Press any key to continue"
+}
+
 # START SCRIPT ACTIONS
 #Revoke any previous Google Cloud authentication session
 gcloud auth revoke
@@ -175,8 +201,14 @@ echo -e "${Red}You must auth to Google Cloud first. Follow the prompts:${Cyan}"
 #Auth to Google Cloud using auth key/code from browser auth
 gcloud auth login
 echo -e "${Grey}"
-clear
 
+
+#Set some default Google Cloud parameters
+echo -e "${Red}"
+gcloud config set project cse-projects-202906
+echo -e "${Grey}"
+gcloud config get project
+setRegion
 
 #Start Menu
 while true; do
@@ -194,6 +226,7 @@ while true; do
     echo "8. Create new Instance Group (Instance Template must already exist)"
     echo "9. Resize Instance Group"
     echo "10. Register FortiPOC Trial Key on all instances of an Instance Group"
+    echo "S. Set Region"
     echo -e "${Red}Q. Quit and terminate SSH Session${Grey}"
     read -e -p "Select an option:" menuchoice
     case $menuchoice in
@@ -278,6 +311,8 @@ while true; do
             echo -e "${Grey}"
             read -e -p "Press any key to continue"
             registerTrialKey;;
+        S)
+            setRegion;;
         Q)
             gcloud auth revoke
             exit;;
