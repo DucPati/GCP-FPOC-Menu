@@ -10,6 +10,7 @@ Purple='\'033'\e'[95m
 Cyan='\'033'\e'[36m
 Grey='\'033'\e'[37m
 Yellow='\'033'\e'[33m
+export licenseserver=https://fortiflex.ftntlab.org/
 
 #DEFINE FUNCTIONS
 #Function to read variables required to create Instance Template
@@ -76,10 +77,6 @@ echo -e "${Grey}"
 read -e -p "Enter Instance Template name: " instancetemplatename
 export instancetemplatename=$instancetemplatename
 echo -e "${Yellow}"
-gcloud compute regions list --filter="name:(europe,australia)"
-echo -e "${Grey}"
-read -e -p "Select one of the above regions. europe-west1 for EMEA workshops (copy and paste it): " region
-export region=$region
 }
 
 # Function to display the entered variables before proceeding with instance group creation. To be piped to column -t for formatting
@@ -90,6 +87,7 @@ echo
 echo "Instance_Group: $instancegroupname"
 echo "Instance_Template: $instancetemplatename"
 echo "Region: $region"
+echo "Zone: $zone"
 }
 
 #Function to create Instance Group
@@ -98,7 +96,7 @@ echo -e "${Red}Creating Instance Group...${Yellow}"
 gcloud compute instance-groups managed create $instancegroupname \
 --region=$region \
 --template=$instancetemplatename \
---target-distribution-shape=even \
+--zones=$zone \
 --size=0
 echo -e "${Grey}"
 read -e -p "Press any key to continue"
@@ -137,12 +135,13 @@ function registerTrialKey () {
     echo -e "Region: $region"
     read -e -p "Is this the correct region? (y/n)" yn
     if [ ${yn} == y ]; then
-        echo -e "${Red}"
-        for instance in $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "," $2 "\n" }' | tail -n +2); do   
-            export instancename="${instance%,*}"
-            export zone="${instance#*,}"
+        echo -e "${Yellow}"
+        for instance in $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2); do   
+            export instancename="$instance"
             echo -e $instancename $zone
+            gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "register trial clear"
             gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "register trial e20a8ece-cccf-4aa7-ab3c-c9c468e97f23:bd5791172c59ad2"
+            gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "set license $licenseserver"
             gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "execute reboot"<y
         done
     fi
@@ -166,6 +165,7 @@ function setRegion () {
                         export region=australia-southeast1
                         export network=anz-pgalligan-network-1
                         export subnet=australia-southeast-1
+                        export zone=australia-southeast1-b
                         echo -e "${Grey}";;
                     2)
                         echo -e "${Red}"
@@ -173,6 +173,7 @@ function setRegion () {
                         export region=asia-southeast1
                         export network=iam-apac-xperts-sin
                         export subnet=iam-apac-xperts-sin
+                        export zone=asia-southeast1-b
                         echo -e "${Grey}";;
                     3)
                         echo -e "${Red}"
@@ -180,12 +181,14 @@ function setRegion () {
                         export region=europe-west1
                         export network=iam-eu-vpc
                         export subnet=iam-eu-west1
+                        export zone=europe-west1-b
                         echo -e "${Grey}";;
                 esac
                 echo
                 echo -e "${Yellow}Region: ${Grey}$region"
                 echo -e "${Yellow}Network: ${Grey}$network"
                 echo -e "${Yellow}Subnet: ${Grey}$subnet"
+                echo -e "${Yellow}Zone: ${Grey}$zone"
                 echo
                 read -e -p "Press any key to continue"
 }
