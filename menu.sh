@@ -118,6 +118,52 @@ echo -e "${Grey}"
 read -e -p "Press any key to continue"
 }
 
+#Function to resize Instance Group
+function resizeInstanceGroup () {
+    echo -e "${Grey}"
+    read -e -p "Enter number of instances to resize to: " number
+    read -e -p "Enter a filter for the Instance Group name. Eg iam: " instancegroupfilter
+    echo -e "${Yellow}"
+    gcloud compute instance-groups list --filter="name:$instancegroupfilter"
+    echo -e "${Grey}"
+    read -e -p "Enter Instance Group name: " instancegroupname
+    export region=$(gcloud compute instance-groups list --filter="name:$instancegroupname" --format="value(region)")
+    echo -e "Region: $region"
+    read -e -p "Is this the correct region? (y/n)" yn
+    if [ ${yn} == y ]; then
+        echo -e "${Red}Resizing Instance Group to $number instances...${Yellow}"
+        gcloud compute instance-groups managed resize $instancegroupname --size=$number --region=$region
+    fi
+    echo -e "${Grey}"
+    read -e -p "Press any key to continue."
+}
+
+#Function to register trial key on instances in an Instance Group
+#This is to ensure unique licenses to avoid license errors during workshops
+#Instance will reboot after trial license code is applied
+function registerTrialKey () {
+    echo -e "${Grey}"
+    read -e -p "Enter Instance Group Name: " instancegroupname
+    export instancegroupname=$instancegroupname
+    read -e -p "Enter Trial Key: " trialkey
+    export trialkey=$trialkey
+    export region=$(gcloud compute instance-groups list --filter="name:$instancegroupname" --format="value(region)")
+    echo -e "Region: $region"
+    read -e -p "Is this the correct region? (y/n)" yn
+    if [ ${yn} == y ]; then
+        echo -e "${Red}"
+        for instance in $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "," $2 "\n" }' | tail -n +2); do   
+            export instancename="${instance%,*}"
+            export zone="${instance#*,}"
+            echo -e $instancename $zone
+            gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "register trial e20a8ece-cccf-4aa7-ab3c-c9c468e97f23:bd5791172c59ad2"
+            gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "execute reboot"<y
+        done
+    fi
+    echo -e "${Grey}"
+    read -e -p "Press any key to continue"
+}
+
 # START SCRIPT ACTIONS
 #Revoke any previous Google Cloud authentication session
 gcloud auth revoke
@@ -146,6 +192,8 @@ while true; do
     echo "6. List Public IPs for all instances in an Instance Group"
     echo "7. Create new Instance Template (source disk image must already exist)"
     echo "8. Create new Instance Group (Instance Template must already exist)"
+    echo "9. Resize Instance Group"
+    echo "10. Register FortiPOC Trial Key on all instances of an Instance Group"
     echo -e "${Red}Q. Quit and terminate SSH Session${Grey}"
     read -e -p "Select an option:" menuchoice
     case $menuchoice in
@@ -220,6 +268,16 @@ while true; do
                 no)
                     echo;;
             esac;;
+        9)
+            resizeInstanceGroup;;
+        10)
+            echo -e "${Grey}"
+            read -e -p "Enter a filter for the Instance Group name. Eg iam: " instancegroupfilter
+            echo -e "${Yellow}"
+            gcloud compute instance-groups list --filter="name:$instancegroupfilter"
+            echo -e "${Grey}"
+            read -e -p "Press any key to continue"
+            registerTrialKey;;
         Q)
             gcloud auth revoke
             exit;;
