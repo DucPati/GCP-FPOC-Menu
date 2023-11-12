@@ -220,20 +220,23 @@ setRegion
 while true; do
     clear
     echo
-    echo -e "${Purple}IAM CSE Team Google Cloud Menu"
+    echo -e "${Purple}IAM CSE Team Google Cloud Tools"
     echo
-    echo -e "${Grey}1. Check GCloud Credentials"
-    echo "2. List Disk Images"
-    echo "3. List VM Instances"
-    echo "4. List VM Instance Templates"
-    echo "5. List VM Instance Groups"
-    echo "6. List Public IPs for all instances in an Instance Group"
-    echo "7. Create new Instance Template (source disk image must already exist)"
-    echo "8. Create new Instance Group (Instance Template must already exist)"
-    echo "9. Resize Instance Group"
-    echo "10. Register FortiPOC Trial Key on all instances of an Instance Group"
-    echo "S. Set Region"
-    echo -e "${Red}Q. Quit and terminate SSH Session${Grey}"
+    echo -e "${Blue}Region: ${Yellow}$region ${Grey}- ${Blue}Zone: ${Yellow}$zone ${Grey}- ${Blue}Network: ${Yellow}$network ${Grey}- ${Blue}Subnet: ${Yellow}$subnet"
+    echo
+    echo -e "${Grey}1.  Check current Google Cloud Credentials"
+    echo "2.  List Disk Images"
+    echo "3.  List VM Instances"
+    echo "4.  List VM Instance Templates"
+    echo "5.  List VM Instance Groups"
+    echo "6.  List Public IPs for all instances in an Instance Group"
+    echo "7.  Create new Instance Template (source disk image must already exist)"
+    echo "8.  Create new Instance Group (Instance Template must already exist)"
+    echo "9.  Resize Instance Group"
+    echo "10. Prepare Instances for workshop - Register FPOC key, re-launch POC and retrieve unique licenses from license server"
+    echo "S.  Set Region"
+    echo -e "${Red}Q.  Quit and terminate SSH Session. De-auths from Google Cloud.${Grey}"
+    echo
     read -e -p "Select an option:" menuchoice
     case $menuchoice in
         1)
@@ -318,6 +321,8 @@ while true; do
             read -e -p "Press any key to continue"
             registerTrialKey;;
         S)
+            setRegion;;
+        s)
             setRegion;;
         Q)
             gcloud auth revoke
