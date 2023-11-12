@@ -122,6 +122,14 @@ function resizeInstanceGroup () {
     read -e -p "Press any key to continue."
 }
 
+#Function to Gcloud SSH to config pods with trial key and restart poc
+function gcppoclaunch () {
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "register trial clear"
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "register trial $trialkey"
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "set license $licenseserver"
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc launch 2"
+}
+
 #Function to register trial key on instances in an Instance Group
 #This is to ensure unique licenses to avoid license errors during workshops
 #Instance will reboot after trial license code is applied
@@ -131,20 +139,15 @@ function registerTrialKey () {
     export instancegroupname=$instancegroupname
     read -e -p "Enter Trial Key: " trialkey
     export trialkey=$trialkey
-    export region=$(gcloud compute instance-groups list --filter="name:$instancegroupname" --format="value(region)")
-    echo -e "Region: $region"
-    read -e -p "Is this the correct region? (y/n)" yn
-    if [ ${yn} == y ]; then
-        echo -e "${Yellow}"
-        for instance in $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2); do   
-            export instancename="$instance"
-            echo -e $instancename $zone
-            gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "register trial clear"
-            gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "register trial e20a8ece-cccf-4aa7-ab3c-c9c468e97f23:bd5791172c59ad2"
-            gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "set license $licenseserver"
-            gcloud compute ssh admin@${instancename} --zone=${zone} --project "cse-projects-202906" --command "execute reboot"<y
-        done
-    fi
+    read -e -p "Enter POC number to launch: " pocnum
+    export pocnum=$pocnum
+    echo -e "About to config $instancegroupname with Trial Key: $trialkey and launch POC number $pocnum"
+    read -e -p "Is this correct? (y/n)" yn
+    export -f gcppoclaunch
+    parallel \
+        --jobs 5 \
+        --joblog logs/logfile-$(date +%Y%m%d%H%M%S) -j 100 \
+        gcppoclaunch  ::: $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2)
     echo -e "${Grey}"
     read -e -p "Press any key to continue"
 }
