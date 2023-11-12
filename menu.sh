@@ -77,6 +77,47 @@ createInstanceTemplate () {
     read -e -p "Press any key to continue"
 }
 
+#Function to read variables required to create Instance Group
+getInstanceGroupVariables () {
+echo -e "${Grey}"
+read -e -p "Enter a name for the Instance Group: " instancegroupname
+export instancegroupname=$instancegroupname
+read -e -p "Enter filter for Instance Template name: " instancetemplatefilter
+echo -e "${Yellow}"
+gcloud compute instance-templates list --filter="name:$instancetemplatefilter"
+export instancetemplatefilter=$instancetemplatefilter
+echo -e "${Grey}"
+read -e -p "Enter Instance Template name: " instancetemplatename
+export instancetemplatename=$instancetemplatename
+echo -e "${Yellow}"
+gcloud compute regions list --filter="name:(europe,australia)"
+echo -e "${Grey}"
+read -e -p "Select one of the above regions. europe-west1 for EMEA workshops (copy and paste it): " region
+export region=$region
+}
+
+# Function to display the entered variables before proceeding with instance group creation. To be piped to column -t for formatting
+ConfirmInstanceGroupVariables () {
+echo
+echo -e "${Yellow}OPTIONS-SELECTED: "
+echo
+echo "Instance_Group: $instancegroupname"
+echo "Instance_Template: $instancetemplatename"
+echo "Region: $region"
+}
+
+#Function to create Instance Group
+function createInstanceGroup () {
+echo -e "${Red}Creating Instance Group...${Yellow}"
+gcloud compute instance-groups managed create $instancegroupname \
+--region=$region \
+--template=$instancetemplatename \
+--target-distribution-shape=even \
+--size=0
+echo -e "${Grey}"
+read -e -p "Press any key to continue"
+}
+
 # START SCRIPT ACTIONS
 #Revoke any previous Google Cloud authentication session
 gcloud auth revoke
@@ -104,6 +145,7 @@ while true; do
     echo "5. List VM Instance Groups"
     echo "6. List Public IPs for all instances in an Instance Group"
     echo "7. Create new Instance Template (source disk image must already exist)"
+    echo "8. Create new Instance Group (Instance Template must already exist)"
     echo -e "${Red}Q. Quit and terminate SSH Session${Grey}"
     read -e -p "Select an option:" menuchoice
     case $menuchoice in
@@ -162,6 +204,19 @@ while true; do
                     clear
                     echo
                     createInstanceTemplate;;
+                no)
+                    echo;;
+            esac;;
+        8)
+            getInstanceGroupVariables
+            ConfirmInstanceGroupVariables | column -t
+            echo -e "${Grey}"
+            read -e -p "Are these option correct? (yes/no): " yesno
+            case $yesno in
+                yes)
+                    clear
+                    echo
+                    createInstanceGroup;;
                 no)
                     echo;;
             esac;;
