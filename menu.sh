@@ -161,7 +161,7 @@ function registerTrialKey () {
     if [ ${yn} == y ]; then
         export -f gcppoclaunch
         parallel \
-            --jobs 5 \
+            --jobs 7 \
             --joblog logs/logfile-$(date +%Y%m%d%H%M%S) -j 100 \
             gcppoclaunch  ::: $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2)
         echo -e "${Grey}"
