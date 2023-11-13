@@ -5,7 +5,7 @@ GCP Tools for FortiPOC deployment for IAM CSE team.
 - Uses GCP's built-in automation capability
 - Prompts for region during startup and automatically configures zone, network and subnet
 - Launched from Ubuntu instance in Azure. Accessible via FortiPAM HA cluster in Azure
-- FortiPAM HA Cluster in Azure also has option to monitor logs during "FortiPOC Instance Preparation"
+- FortiPAM HA Cluster in Azure also has option to monitor logs during "FortiPOC Instance Preparation" using the [*logview* ](README.md#logview-user-and-script)user
 
 ## FortiPOC HOL Preparation Process
 ### Disk Image
