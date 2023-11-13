@@ -10,6 +10,8 @@ Purple='\'033'\e'[95m
 Cyan='\'033'\e'[36m
 Grey='\'033'\e'[37m
 Yellow='\'033'\e'[33m
+
+export trialkey=e20a8ece-cccf-4aa7-ab3c-c9c468e97f23:bd5791172c59ad2
 export licenseserver=https://fortiflex.ftntlab.org/
 
 #DEFINE FUNCTIONS
@@ -124,10 +126,9 @@ function resizeInstanceGroup () {
 
 #Function to Gcloud SSH to config pods with trial key and restart poc
 function gcppoclaunch () {
-    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "register trial clear"
     gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "register trial $trialkey"
     gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "set license $licenseserver"
-    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc launch 2"
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc launch $pocnum"
 }
 
 #Function to register trial key on instances in an Instance Group
@@ -137,19 +138,35 @@ function registerTrialKey () {
     echo -e "${Grey}"
     read -e -p "Enter Instance Group Name: " instancegroupname
     export instancegroupname=$instancegroupname
-    read -e -p "Enter Trial Key: " trialkey
-    export trialkey=$trialkey
+    echo
+    echo -e "${Blue}1. https://license.ftntlab.org/"
+    echo -e "2. https://fortiflex.ftntlab.org/ ${Grey}"
+    echo
+    read -e -p "Select license server: " licenseserverselection
+    case $licenseserverselection in
+        1) export licenseserver=https://license.ftntlab.org/;;
+        2) export licenseserver=https://fortiflex.ftntlab.org/;;
+    esac
+    echo
     read -e -p "Enter POC number to launch: " pocnum
     export pocnum=$pocnum
-    echo -e "About to config $instancegroupname with Trial Key: $trialkey and launch POC number $pocnum"
+    echo -e "Selected Options:"
+    echo
+    echo -e "${Yellow}Instance Group $instancegroupname"
+    echo -e "Trial Key: $trialkey"
+    echo -e "License Server: $licenseserver"
+    echo -e "POC number ro launch: $pocnum${Grey}"
+    echo
     read -e -p "Is this correct? (y/n)" yn
-    export -f gcppoclaunch
-    parallel \
-        --jobs 5 \
-        --joblog logs/logfile-$(date +%Y%m%d%H%M%S) -j 100 \
-        gcppoclaunch  ::: $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2)
-    echo -e "${Grey}"
-    read -e -p "Press any key to continue"
+    if [ ${yn} == y ]; then
+        export -f gcppoclaunch
+        parallel \
+            --jobs 5 \
+            --joblog logs/logfile-$(date +%Y%m%d%H%M%S) -j 100 \
+            gcppoclaunch  ::: $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2)
+        echo -e "${Grey}"
+        read -e -p "Press any key to continue"
+    fi
 }
 
 #Function to set region and other parameters
