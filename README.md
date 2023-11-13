@@ -3,7 +3,7 @@ GCP Tools for FortiPOC deployment for IAM CSE team.
 
 - Intended to be used when unable to get FNDN team to provision HOLs
 - Uses GCP's built-in automation capability
-- Prompts for region during startup and automatically configured zone, network and subnet
+- Prompts for region during startup and automatically configures zone, network and subnet
 - Launched from Ubuntu instance in Azure. Accessible via FortiPAM HA cluster in Azure
 - FortiPAM HA Cluster in Azure also has option to monitor logs during "FortiPOC Instance Preparation"
 
