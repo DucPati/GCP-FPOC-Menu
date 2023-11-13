@@ -29,7 +29,7 @@ export disksize=$disksize
 echo -e "${Yellow}"
 gcloud compute images list --filter="name:iam"
 echo -e "${Grey}"
-read -e -p "Select one of the above images as the source image. (copy and paste it): " sourcediskimage
+read -e -p "Copy/Paste one of the above images as the source image: " sourcediskimage
 export sourcediskimage=$sourcediskimage
 echo -e "${Yellow}"
 }
@@ -71,12 +71,12 @@ getInstanceGroupVariables () {
 echo -e "${Grey}"
 read -e -p "Enter a name for the Instance Group: " instancegroupname
 export instancegroupname=$instancegroupname
-read -e -p "Enter filter for Instance Template name: " instancetemplatefilter
+read -e -p "Enter a search filter for Instance Template: " instancetemplatefilter
 echo -e "${Yellow}"
 gcloud compute instance-templates list --filter="name:$instancetemplatefilter"
 export instancetemplatefilter=$instancetemplatefilter
 echo -e "${Grey}"
-read -e -p "Enter Instance Template name: " instancetemplatename
+read -e -p "Copy/Paste Instance Template name: " instancetemplatename
 export instancetemplatename=$instancetemplatename
 echo -e "${Yellow}"
 }
@@ -108,11 +108,11 @@ read -e -p "Press any key to continue"
 function resizeInstanceGroup () {
     echo -e "${Grey}"
     read -e -p "Enter number of instances to resize to: " number
-    read -e -p "Enter a filter for the Instance Group name. Eg iam: " instancegroupfilter
+    read -e -p "Enter a search filter for the Instance Group name. Eg iam: " instancegroupfilter
     echo -e "${Yellow}"
     gcloud compute instance-groups list --filter="name:$instancegroupfilter"
     echo -e "${Grey}"
-    read -e -p "Enter Instance Group name: " instancegroupname
+    read -e -p "Copy/Paste Instance Group name: " instancegroupname
     export region=$(gcloud compute instance-groups list --filter="name:$instancegroupname" --format="value(region)")
     echo -e "Region: $region"
     read -e -p "Is this the correct region? (y/n)" yn
@@ -126,9 +126,9 @@ function resizeInstanceGroup () {
 
 #Function to Gcloud SSH to config pods with trial key and restart poc
 function gcppoclaunch () {
-    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "register trial $trialkey"
-    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "set license $licenseserver"
-    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc launch $pocnum"
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "set license $licenseserver" > logs/$1.log
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "register trial $trialkey" >> logs/$1.log
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc launch $pocnum" >> logs/$1.log
 }
 
 #Function to register trial key on instances in an Instance Group
@@ -155,15 +155,17 @@ function registerTrialKey () {
     echo -e "${Yellow}Instance Group $instancegroupname"
     echo -e "Trial Key: $trialkey"
     echo -e "License Server: $licenseserver"
-    echo -e "POC number ro launch: $pocnum${Grey}"
+    echo -e "POC number to launch: $pocnum${Grey}"
     echo
     read -e -p "Is this correct? (y/n)" yn
+    echo
+    gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2 > instances.txt
     if [ ${yn} == y ]; then
         export -f gcppoclaunch
         parallel \
-            --jobs 7 \
-            --joblog logs/logfile-$(date +%Y%m%d%H%M%S) -j 100 \
-            gcppoclaunch  ::: $(gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2)
+            --jobs 5 \
+            --joblog logs/InstancePrepLog-$(date +%Y%m%d%H%M%S) -j 100 \
+            gcppoclaunch  ::: $(cat instances.txt)
         echo -e "${Grey}"
         read -e -p "Press any key to continue"
     fi
@@ -263,39 +265,39 @@ while true; do
             echo -e "${Grey}";;
         2)
             echo -e "${Grey}"
-            read -e -p "Enter filter for the Disk Image name: " diskimagename
+            read -e -p "Enter search filter for the Disk Image: " diskimagename
             echo -e "${Yellow}"
             gcloud compute images list --filter="name:$diskimagename"
             echo -e "${Grey}"
             read -e -p "Press any key to continue";;
         3)
             echo -e "${Grey}"
-            read -e -p "Enter a filter for the Instance name. Eg iam: " instancefilter
+            read -e -p "Enter search filter for the Instance. Eg iam: " instancefilter
             echo -e "${Yellow}"
             gcloud compute instances list --filter="name:$instancefilter"
             echo -e "${Grey}"
             read -e -p "Press any key to continue";;
         4)
             echo -e "${Grey}"
-            read -e -p "Enter a filter for the Instance Template name. Eg iam: " templatefilter
+            read -e -p "Enter search filter for the Instance Template. Eg iam: " templatefilter
             echo -e "${Yellow}"
             gcloud compute instance-templates list --filter="name:$templatefilter"
             echo -e "${Grey}"
             read -e -p "Press any key to continue";;
         5)
             echo -e "${Grey}"
-            read -e -p "Enter a filter for the Instance Group name. Eg iam: " instancegroupfilter
+            read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
             echo -e "${Yellow}"
             gcloud compute instance-groups list --filter="name:$instancegroupfilter"
             echo -e "${Grey}"
             read -e -p "Press any key to continue";;
         6)
             echo -e "${Grey}"
-            read -e -p "Enter a filter for the Instance Group name. Eg iam: " instancegroupfilter
+            read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
             echo -e "${Yellow}"
             gcloud compute instance-groups list --filter="name:$instancegroupfilter"
             echo -e "${Grey}"
-            read -e -p "Enter Instance Group Name: " instancegroup
+            read -e -p "Copy/Paste Instance Group: " instancegroup
             echo
             echo -e "Public IPs are: ${Yellow}"
             gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2
@@ -331,7 +333,7 @@ while true; do
             resizeInstanceGroup;;
         10)
             echo -e "${Grey}"
-            read -e -p "Enter a filter for the Instance Group name. Eg iam: " instancegroupfilter
+            read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
             echo -e "${Yellow}"
             gcloud compute instance-groups list --filter="name:$instancegroupfilter"
             echo -e "${Grey}"
