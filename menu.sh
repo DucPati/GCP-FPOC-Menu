@@ -2,7 +2,7 @@
 cd ~ #Set current directory
 #Set colour variables
 Black='\'033'\e'[30m
-Red='\'033'\e'[31m
+Red='\'033'\e'[91m
 Green='\'033'\e'[32m
 Brown='\'033'\e'[33m
 Blue='\'033'\e'[94m
@@ -126,6 +126,8 @@ function resizeInstanceGroup () {
 
 #Function to Gcloud SSH to config pods with trial key and restart poc
 function gcppoclaunch () {
+    RANDOMSLEEP=$((($RANDOM % 10) + 1))s
+    sleep $RANDOMSLEEP #Random sleep to avoid GCP DB lock errors
     gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "set license $licenseserver" > logs/$1.log
     gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "register trial $trialkey" >> logs/$1.log
     gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc launch $pocnum" >> logs/$1.log
@@ -163,8 +165,8 @@ function registerTrialKey () {
     if [ ${yn} == y ]; then
         export -f gcppoclaunch
         parallel \
-            --jobs 5 \
-            --joblog logs/InstancePrepLog-$(date +%Y%m%d%H%M%S) -j 100 \
+            --jobs 7 \
+            --joblog logs/InstancePrepLog-$(date +%Y%m%d%H%M%S).log \
             gcppoclaunch  ::: $(cat instances.txt)
         echo -e "${Grey}"
         read -e -p "Press any key to continue"
@@ -254,6 +256,7 @@ while true; do
     echo "9.  Resize Instance Group"
     echo "10. Prepare Instances for workshop - Register FPOC key, re-launch POC and retrieve unique licenses from license server"
     echo "S.  Set Region"
+    echo -e "${Red}D.  Clean up log files"
     echo -e "${Red}Q.  Quit and terminate SSH Session. De-auths from Google Cloud.${Grey}"
     echo
     read -e -p "Select an option:" menuchoice
@@ -337,12 +340,27 @@ while true; do
             echo -e "${Yellow}"
             gcloud compute instance-groups list --filter="name:$instancegroupfilter"
             echo -e "${Grey}"
-            read -e -p "Press any key to continue"
             registerTrialKey;;
         S)
             setRegion;;
         s)
             setRegion;;
+        D)
+            clear; ls -last logs
+            echo -e "${Red}DELETE THE LOG FILES? (y/n)"
+            read -e -p "" delete
+            case $delete in
+                n) 
+                    rm -f /home/iamcse/logs/* ;;
+            esac;;
+        d)
+            clear; ls -last logs
+            echo -e "${Red}DELETE THE LOG FILES? (y/n)"
+            read -e -p "" delete
+            case $delete in
+                Y) 
+                    rm logs/*;;
+            esac;;
         Q)
             gcloud auth revoke
             exit;;
