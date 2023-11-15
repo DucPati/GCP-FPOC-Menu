@@ -1,3 +1,4 @@
+  GNU nano 6.2                                                                                               login.sh *                                                                                                       
 #!/bin/bash
 
 #Set colour variables
@@ -21,7 +22,10 @@ while true; do
     echo
     echo -e "${Grey}Newest files listed at top"
     echo -e "Copy/Paste the log file you wish to monitor: "
-    echo -e "Hit Ctrl+C then q to quit logfile display"
+    echo -e "While viewing logfile - Hit Ctrl+C then: "
+    echo -e "q to quit logfile display"
+    echo -e "b to page up (back)"
+    echo -e "f to page down (foward)"
     echo 
     read -e -p "" logfile
     less +F $logfile

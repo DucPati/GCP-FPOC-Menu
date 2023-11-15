@@ -165,7 +165,7 @@ function registerTrialKey () {
     if [ ${yn} == y ]; then
         export -f gcppoclaunch
         parallel \
-            --jobs 7 \
+            --jobs 30 \
             --joblog logs/InstancePrepLog-$(date +%Y%m%d%H%M%S).log \
             gcppoclaunch  ::: $(cat instances.txt)
         echo -e "${Grey}"
@@ -217,6 +217,34 @@ function setRegion () {
                 read -e -p "Press any key to continue"
 }
 
+#Function to Gcloud SSH to config pods with trial key and restart poc
+function ejectpocs () {
+    RANDOMSLEEP=$((($RANDOM % 10) + 1))s
+    sleep $RANDOMSLEEP #Random sleep to avoid GCP DB lock errors
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc eject" > logs/$1.log
+}
+
+#Function to get license status
+function getLicenseStatus () {
+read -e -p "Enter VM password: " password
+export password=$password
+echo
+read -e -p "Enter SSH port (Eg. 11007): " port
+export port=$port
+echo
+read -e -p "Enter filename to export results to (will be overwritten): " filename
+export filename=$filename
+echo "Getting License Status..." > $filename
+
+for instance in $(cat instanceips.txt); do
+        echo -e "${Yellow} Checking $instance ..."
+        echo $instance >> logs/$filename
+        ssh-keygen -f "/home/iamcse/.ssh/known_hosts" -R "[$instance]:$port"
+        sshpass -p $password ssh -o StrictHostKeyChecking=no -o UpdateHostKeys=yes -o ConnectTimeout=10 admin@$instance -p $port "get sys status | grep License.Status" >> logs/$filename
+done
+echo -e 
+}
+
 # START SCRIPT ACTIONS
 #Revoke any previous Google Cloud authentication session
 gcloud auth revoke
@@ -255,6 +283,9 @@ while true; do
     echo "8.  Create new Instance Group (Instance Template must already exist)"
     echo "9.  Resize Instance Group"
     echo "10. Prepare Instances for workshop - Register FPOC key, re-launch POC and retrieve unique licenses from license server"
+    echo "11. Get license status for VMs in a POC. You must run option 6 to export the IPs for all the instances first."
+    echo "12. Eject POC to release licenses."
+    echo -e "${Blue}F.  File Manager${Grey}"
     echo "S.  Set Region"
     echo -e "${Red}D.  Clean up log files"
     echo -e "${Red}Q.  Quit and terminate SSH Session. De-auths from Google Cloud.${Grey}"
@@ -304,6 +335,15 @@ while true; do
             echo
             echo -e "Public IPs are: ${Yellow}"
             gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2
+            echo -e "${Grey} "
+            read -e -p "Do you want to export these to a file? This will be used to get license status (Option 11 on the menu) for VMs within a POC: " yn
+            case $yn in
+            y)
+                gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2 > instanceips.txt;;
+            Y)
+                gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2 > instanceips.txt;;
+
+            esac
             echo -e "${Grey}"
             read -e -p "Press any key to continue";;
         7)
@@ -341,6 +381,32 @@ while true; do
             gcloud compute instance-groups list --filter="name:$instancegroupfilter"
             echo -e "${Grey}"
             registerTrialKey;;
+        11) 
+            if ! test -f instanceips.txt; then
+                echo -e "${Red}File with instance IPs does not exist!"
+                echo -e "${Grey}"
+                read -e -p "Press any key"
+            else
+                getLicenseStatus
+            fi;;
+        12)
+            echo -e "${Grey}"
+            read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
+            echo -e "${Yellow}"
+            gcloud compute instance-groups list --filter="name:$instancegroupfilter"
+            echo -e "${Grey}"
+            read -e -p "Enter Instance Group Name: " instancegroupname
+            export instancegroupname=$instancegroupname
+            gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2 > instances.txt
+            export -f ejectpocs
+            parallel \
+                --jobs 30 \
+                --joblog logs/EjectPOCs-$(date +%Y%m%d%H%M%S).log \
+            ejectpocs  ::: $(cat instances.txt);;
+        F)
+            ranger;;
+        f)
+            ranger;;
         S)
             setRegion;;
         s)
