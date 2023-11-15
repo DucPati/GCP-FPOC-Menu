@@ -350,7 +350,9 @@ while true; do
             echo -e "${Red}DELETE THE LOG FILES? (y/n)"
             read -e -p "" delete
             case $delete in
-                n) 
+                y)
+                    rm -f /home/iamcse/logs/* ;;
+                Y)
                     rm -f /home/iamcse/logs/* ;;
             esac;;
         d)
@@ -358,8 +360,10 @@ while true; do
             echo -e "${Red}DELETE THE LOG FILES? (y/n)"
             read -e -p "" delete
             case $delete in
-                Y) 
-                    rm logs/*;;
+                y)
+                    rm -f /home/iamcse/logs/* ;;
+                Y)
+                    rm -f /home/iamcse/logs/* ;;
             esac;;
         Q)
             gcloud auth revoke

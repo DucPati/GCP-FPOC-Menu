@@ -11,7 +11,8 @@ Cyan='\'033'\e'[36m
 Grey='\'033'\e'[37m
 Yellow='\'033'\e'[33m
 
-
+#Function to display and select logfiles to view
+function viewLogfiles () {
 while true; do
     clear
     cd /home/iamcse/logs #Set log directory
@@ -24,5 +25,8 @@ while true; do
     echo 
     read -e -p "" logfile
     less +F $logfile
-    exit
+    viewLogfiles
 done
+}
+
+viewLogfiles
