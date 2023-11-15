@@ -63,7 +63,7 @@ createInstanceTemplate () {
     --custom-vm-type=n1 \
     --region=$region
     echo -e "${Grey}"
-    read -e -p "Press any key to continue"
+    read -e -p "Press Enter key to continue"
 }
 
 #Function to read variables required to create Instance Group
@@ -101,7 +101,7 @@ gcloud compute instance-groups managed create $instancegroupname \
 --zones=$zone \
 --size=0
 echo -e "${Grey}"
-read -e -p "Press any key to continue"
+read -e -p "Press Enter key to continue"
 }
 
 #Function to resize Instance Group
@@ -121,14 +121,19 @@ function resizeInstanceGroup () {
         gcloud compute instance-groups managed resize $instancegroupname --size=$number --region=$region
     fi
     echo -e "${Grey}"
-    read -e -p "Press any key to continue."
+    read -e -p "Press Enter key to continue."
 }
 
 #Function to Gcloud SSH to config pods with trial key and restart poc
 function gcppoclaunch () {
     RANDOMSLEEP=$((($RANDOM % 10) + 1))s
     sleep $RANDOMSLEEP #Random sleep to avoid GCP DB lock errors
-    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "set license $licenseserver" > logs/$1.log
+    echo
+    echo $1
+    echo "Instance and IP Address: " > logs/$1.log
+    echo $1 >> logs/$1.log
+    gcloud compute instances list --filter="name:$1" --format="value(EXTERNAL_IP)" >> logs/$1.log
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "set license $licenseserver" >> logs/$1.log
     gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "register trial $trialkey" >> logs/$1.log
     gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc launch $pocnum" >> logs/$1.log
 }
@@ -169,7 +174,7 @@ function registerTrialKey () {
             --joblog logs/InstancePrepLog-$(date +%Y%m%d%H%M%S).log \
             gcppoclaunch  ::: $(cat instances.txt)
         echo -e "${Grey}"
-        read -e -p "Press any key to continue"
+        read -e -p "Press Enter key to continue"
     fi
 }
 
@@ -214,35 +219,31 @@ function setRegion () {
                 echo -e "${Yellow}Subnet: ${Grey}$subnet"
                 echo -e "${Yellow}Zone: ${Grey}$zone"
                 echo
-                read -e -p "Press any key to continue"
+                read -e -p "Press Enter key to continue"
 }
 
 #Function to Gcloud SSH to config pods with trial key and restart poc
 function ejectpocs () {
     RANDOMSLEEP=$((($RANDOM % 10) + 1))s
     sleep $RANDOMSLEEP #Random sleep to avoid GCP DB lock errors
-    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc eject" > logs/$1.log
+    echo
+    echo $1
+    echo "Instance and IP Address: " > logs/$1.log
+    echo $1 >> logs/$1.log
+    gcloud compute instances list --filter="name:$1" --format="value(EXTERNAL_IP)" >> logs/$1.log
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "poc eject" >> logs/$1.log
 }
 
 #Function to get license status
 function getLicenseStatus () {
-read -e -p "Enter VM password: " password
-export password=$password
-echo
-read -e -p "Enter SSH port (Eg. 11007): " port
-export port=$port
-echo
-read -e -p "Enter filename to export results to (will be overwritten): " filename
-export filename=$filename
-echo "Getting License Status..." > $filename
-
-for instance in $(cat instanceips.txt); do
-        echo -e "${Yellow} Checking $instance ..."
-        echo $instance >> logs/$filename
-        ssh-keygen -f "/home/iamcse/.ssh/known_hosts" -R "[$instance]:$port"
-        sshpass -p $password ssh -o StrictHostKeyChecking=no -o UpdateHostKeys=yes -o ConnectTimeout=10 admin@$instance -p $port "get sys status | grep License.Status" >> logs/$filename
-done
-echo -e 
+    RANDOMSLEEP=$((($RANDOM % 10) + 1))s
+    sleep $RANDOMSLEEP #Random sleep to avoid GCP DB lock errors
+    echo
+    echo $1
+    echo "Instance and IP Address: " > logs/$1.log
+    echo $1 >> logs/$1.log
+    gcloud compute instances list --filter="name:$1" --format="value(EXTERNAL_IP)" >> logs/$1.log
+    sshpass -p $password gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --strict-host-key-checking=no --command "get sys status | grep License.Status" -- -p $port >> logs/$1.log
 }
 
 # START SCRIPT ACTIONS
@@ -278,7 +279,7 @@ while true; do
     echo "3.  List VM Instances"
     echo "4.  List VM Instance Templates"
     echo "5.  List VM Instance Groups"
-    echo "6.  List Public IPs for all instances in an Instance Group"
+    echo "6.  List Public IPs for all instances in an Instance Group. Optionally export to file."
     echo "7.  Create new Instance Template (source disk image must already exist)"
     echo "8.  Create new Instance Group (Instance Template must already exist)"
     echo "9.  Resize Instance Group"
@@ -295,7 +296,7 @@ while true; do
         1)
             echo -e "${Yellow}"
             gcloud auth list
-            read -e -p "Press any key to continue"
+            read -e -p "Press Enter key to continue"
             echo -e "${Grey}";;
         2)
             echo -e "${Grey}"
@@ -303,28 +304,28 @@ while true; do
             echo -e "${Yellow}"
             gcloud compute images list --filter="name:$diskimagename"
             echo -e "${Grey}"
-            read -e -p "Press any key to continue";;
+            read -e -p "Press Enter key to continue";;
         3)
             echo -e "${Grey}"
             read -e -p "Enter search filter for the Instance. Eg iam: " instancefilter
             echo -e "${Yellow}"
             gcloud compute instances list --filter="name:$instancefilter"
             echo -e "${Grey}"
-            read -e -p "Press any key to continue";;
+            read -e -p "Press Enter key to continue";;
         4)
             echo -e "${Grey}"
             read -e -p "Enter search filter for the Instance Template. Eg iam: " templatefilter
             echo -e "${Yellow}"
             gcloud compute instance-templates list --filter="name:$templatefilter"
             echo -e "${Grey}"
-            read -e -p "Press any key to continue";;
+            read -e -p "Press Enter key to continue";;
         5)
             echo -e "${Grey}"
             read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
             echo -e "${Yellow}"
             gcloud compute instance-groups list --filter="name:$instancegroupfilter"
             echo -e "${Grey}"
-            read -e -p "Press any key to continue";;
+            read -e -p "Press Enter key to continue";;
         6)
             echo -e "${Grey}"
             read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
@@ -336,16 +337,7 @@ while true; do
             echo -e "Public IPs are: ${Yellow}"
             gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2
             echo -e "${Grey} "
-            read -e -p "Do you want to export these to a file? This will be used to get license status (Option 11 on the menu) for VMs within a POC: " yn
-            case $yn in
-            y)
-                gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2 > instanceips.txt;;
-            Y)
-                gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2 > instanceips.txt;;
-
-            esac
-            echo -e "${Grey}"
-            read -e -p "Press any key to continue";;
+            read -e -p "Press Enter key to continue";;
         7)
             getInstanceTemplateVariables
             ConfirmInstanceTemplateVariables | column -t
@@ -380,15 +372,36 @@ while true; do
             echo -e "${Yellow}"
             gcloud compute instance-groups list --filter="name:$instancegroupfilter"
             echo -e "${Grey}"
-            registerTrialKey;;
+            rm -f .ssh/google_compute_known_hosts
+            registerTrialKey
+            for file in logs/$instancegroupname*.log; do
+                cat $file >> logs/$instancegroupname.txt
+            done
+            read -e -p "Press Enter Key";;
         11) 
-            if ! test -f instanceips.txt; then
-                echo -e "${Red}File with instance IPs does not exist!"
-                echo -e "${Grey}"
-                read -e -p "Press any key"
-            else
-                getLicenseStatus
-            fi;;
+            read -e -p "Enter VM password: " password
+            export password=$password
+            read -e -p "Enter SSH port (Eg. 11007): " port
+            export port=$port
+            echo -e "${Grey}"
+            read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
+            echo -e "${Yellow}"
+            gcloud compute instance-groups list --filter="name:$instancegroupfilter"
+            echo -e "${Grey}"
+            read -e -p "Enter Instance Group Name: " instancegroupname
+            export instancegroupname=$instancegroupname
+            gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2 > instances.txt
+            export -f getLicenseStatus
+            echo "Getting License Status..."
+            rm -f .ssh/google_compute_known_hosts
+            parallel \
+                --jobs 30 \
+                --joblog logs/GetLicenseStatus-$(date +%Y%m%d%H%M%S).log \
+            getLicenseStatus ::: $(cat instances.txt)
+            for file in logs/$instancegroupname*.log; do
+                cat $file >> logs/$instancegroupname.txt
+            done
+            read -e -p "Press Enter Key";;
         12)
             echo -e "${Grey}"
             read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
@@ -398,11 +411,16 @@ while true; do
             read -e -p "Enter Instance Group Name: " instancegroupname
             export instancegroupname=$instancegroupname
             gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2 > instances.txt
+            rm -f .ssh/google_compute_known_hosts
             export -f ejectpocs
             parallel \
                 --jobs 30 \
                 --joblog logs/EjectPOCs-$(date +%Y%m%d%H%M%S).log \
-            ejectpocs  ::: $(cat instances.txt);;
+            ejectpocs ::: $(cat instances.txt)
+            for file in logs/$instancegroupname*.log; do
+                cat $file >> logs/$instancegroupname.txt
+            done
+            read -e -p "Press Enter Key";;
         F)
             ranger;;
         f)

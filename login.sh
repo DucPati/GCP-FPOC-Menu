@@ -25,7 +25,7 @@ while true; do
     echo -e "While viewing logfile - Hit Ctrl+C then: "
     echo -e "q to quit logfile display"
     echo -e "b to page up (back)"
-    echo -e "f to page down (foward)"
+    echo -e "f to page down (forward)"
     echo 
     read -e -p "" logfile
     less +F $logfile
