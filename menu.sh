@@ -222,7 +222,7 @@ function setRegion () {
                 read -e -p "Press Enter key to continue"
 }
 
-#Function to Gcloud SSH to config pods with trial key and restart poc
+#Function to Gcloud SSH to all instances and eject poc
 function ejectpocs () {
     RANDOMSLEEP=$((($RANDOM % 10) + 1))s
     sleep $RANDOMSLEEP #Random sleep to avoid GCP DB lock errors
@@ -244,6 +244,18 @@ function getLicenseStatus () {
     echo $1 >> logs/$1.log
     gcloud compute instances list --filter="name:$1" --format="value(EXTERNAL_IP)" >> logs/$1.log
     sshpass -p $password gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --strict-host-key-checking=no --command "get sys status | grep License.Status" -- -p $port >> logs/$1.log
+}
+
+#Function to Gcloud SSH to all instances and and send command
+function sendCommand () {
+    RANDOMSLEEP=$((($RANDOM % 10) + 1))s
+    sleep $RANDOMSLEEP #Random sleep to avoid GCP DB lock errors
+    echo
+    echo $1
+    echo "Instance and IP Address: " > logs/$1.log
+    echo $1 >> logs/$1.log
+    gcloud compute instances list --filter="name:$1" --format="value(EXTERNAL_IP)" >> logs/$1.log
+    gcloud compute ssh admin@$1 --zone=$zone --project "cse-projects-202906" --command "$command" >> logs/$1.log
 }
 
 # START SCRIPT ACTIONS
@@ -286,6 +298,7 @@ while true; do
     echo "10. Prepare Instances for workshop - Register FPOC key, re-launch POC and retrieve unique licenses from license server"
     echo "11. Get license status for VMs in a POC. You must run option 6 to export the IPs for all the instances first."
     echo "12. Eject POC to release licenses."
+    echo "13. Send command to all POCs in parallel"
     echo -e "${Blue}F.  File Manager${Grey}"
     echo "S.  Set Region"
     echo -e "${Red}D.  Clean up log files"
@@ -337,6 +350,10 @@ while true; do
             echo -e "Public IPs are: ${Yellow}"
             gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2
             echo -e "${Grey} "
+            read -e -p "Save to logs/$instancegroup-ips.txt? (y/n) " yn
+            if [ $yn == y ]; then
+                gcloud compute instances list --filter="name:$instancegroup" | awk '{ printf $5 "\n" }' | tail -n +2 > logs/$instancegroup-ips.txt
+            fi
             read -e -p "Press Enter key to continue";;
         7)
             getInstanceTemplateVariables
@@ -417,6 +434,26 @@ while true; do
                 --jobs 30 \
                 --joblog logs/EjectPOCs-$(date +%Y%m%d%H%M%S).log \
             ejectpocs ::: $(cat instances.txt)
+            for file in logs/$instancegroupname*.log; do
+                cat $file >> logs/$instancegroupname.txt
+            done
+            read -e -p "Press Enter Key";;
+        13)
+            read -e -p "Enter search filter for the Instance Group. Eg iam: " instancegroupfilter
+            echo -e "${Yellow}"
+            gcloud compute instance-groups list --filter="name:$instancegroupfilter"
+            echo -e "${Grey}"
+            read -e -p "Enter Instance Group Name: " instancegroupname
+            export instancegroupname=$instancegroupname
+            gcloud compute instance-groups managed list-instances $instancegroupname --region=$region | awk '{ printf $1 "\n" }' | tail -n +2 > instances.txt
+            rm -f .ssh/google_compute_known_hosts
+            read -e -p "Enter command you wish to send: " command
+            export command="$command"
+            export -f sendCommand
+            parallel \
+                --jobs 30 \
+                --joblog logs/sendCommand-$(date +%Y%m%d%H%M%S).log \
+            sendCommand ::: $(cat instances.txt)
             for file in logs/$instancegroupname*.log; do
                 cat $file >> logs/$instancegroupname.txt
             done
